@@ -1,8 +1,8 @@
-from rstr import rstr
-from line import Line
-from box import Box
-from renderer import addstr
-from vars import *
+from .rstr import rstr
+from .line import Line
+from .box import Box
+from .renderer import addstr
+from .vars import *
 
 
 class Tab:
@@ -153,6 +153,8 @@ class Tab:
             self: 'Tab',
     ) -> None:
         """Select the next line."""
+        if len(self.__lines) == 0:
+            return
         self.__selected_line += 1
         self.__selected_line %= len(self.__lines)
         self.__update_tab_scroll()
@@ -162,6 +164,8 @@ class Tab:
             self: 'Tab',
     ) -> None:
         """Select the previous line."""
+        if len(self.__lines) == 0:
+            return
         self.__selected_line -= 1
         self.__selected_line %= len(self.__lines)
         self.__update_tab_scroll()
@@ -171,6 +175,8 @@ class Tab:
             self: 'Tab',
     ) -> None:
         """Select the next subtab."""
+        if len(self.__subtabs) == 0:
+            return
         self.__selected_subtab += 1
         self.__selected_subtab %= len(self.__subtabs)
         self.__reset_content_scroll()
@@ -179,6 +185,8 @@ class Tab:
             self: 'Tab',
     ) -> None:
         """Select the previous subtab."""
+        if len(self.__subtabs) == 0:
+            return
         self.__selected_subtab -= 1
         self.__selected_subtab %= len(self.__subtabs)
         self.__reset_content_scroll()
@@ -201,6 +209,8 @@ class Tab:
         Returns:
             str: The selected subtext.
         """
+        if len(self.__lines) == 0:
+            return ''
         line = self.get_selected_line()
         if line.get_nb_subtext() == 0:
             return ''
@@ -220,8 +230,8 @@ class Tab:
         """Scroll down."""
         self.__content_scroll += 1
         subtext_lines = self.__get_subtext_lines()
-        if self.scroll > len(subtext_lines):
-            self.scroll = len(subtext_lines)
+        if self.__content_scroll > len(subtext_lines):
+            self.__content_scroll = len(subtext_lines)
 
     def render_tab(
             self: 'Tab',
@@ -306,7 +316,7 @@ class Tab:
     def __reset_content_scroll(
             self: 'Tab',
     ) -> None:
-        self.scroll = 0
+        self.__content_scroll = 0
 
     def select(
             self: 'Tab',

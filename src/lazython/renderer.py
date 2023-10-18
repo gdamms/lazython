@@ -1,7 +1,7 @@
 import sys
 import re
 
-from rstr import rstr
+from .rstr import rstr
 
 
 class Renderer:
@@ -11,18 +11,31 @@ class Renderer:
     """
 
     class R:
-        def __init__(self):
+        def start(self):
             sys.stdout.write('\x1b[?1049h')
             sys.stdout.write('\x1b[?25l')
             sys.stdout.flush()
 
-        def __del__(self):
+        def stop(self):
             sys.stdout.write('\x1b[?1049l')
             sys.stdout.write('\x1b[?25h')
             sys.stdout.flush()
 
+        def __del__(self):
+            self.stop()
+
     INSTANCE: 'R' = R()
     BUFFER: str = ''
+
+
+def start() -> None:
+    """Start the renderer."""
+    Renderer.INSTANCE.start()
+
+
+def stop() -> None:
+    """Stop the renderer."""
+    Renderer.INSTANCE.stop()
 
 
 def addstr(y: int, x: int, text: str) -> None:

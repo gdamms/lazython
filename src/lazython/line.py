@@ -1,4 +1,4 @@
-from rstr import rstr
+from .rstr import rstr
 
 
 class Line:

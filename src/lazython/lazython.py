@@ -1,9 +1,9 @@
 import os
 
-from box import Box
-from tab import Tab
-from get_key import get_key
-from renderer import addstr, refresh, clear
+from .box import Box
+from .tab import Tab
+from .get_key import get_key
+from .renderer import addstr, refresh, clear, start, stop
 
 
 class Lazython:
@@ -70,6 +70,7 @@ class Lazython:
 
         This method will start the lazython and will block until the lazython is stopped.
         """
+        start()
         self.__running = True
         while self.__running:
             self.render()
@@ -112,6 +113,8 @@ class Lazython:
             elif key == 2117491483:
                 self.scroll_down()
 
+        stop()
+
     def new_tab(
             self: 'Lazython',
             name: str = '',
@@ -139,6 +142,8 @@ class Lazython:
     ) -> None:
         """Perform all necessary updates."""
         self.__update_sizes()
+        if len(self.__tabs) == 0:
+            return
         self.__tabs[self.__selected_tab].select()
 
     def render(
@@ -149,8 +154,15 @@ class Lazython:
 
         clear()
 
+        if len(self.__tabs) == 0:
+            addstr(0, 0, 'No tab.')
+            self.__render_footer()
+            refresh()
+            return
+
         if not self.is_renderable():
             addstr(0, 0, 'Terminal too small.')
+            self.__render_footer()
             refresh()
             return
 
@@ -196,6 +208,8 @@ class Lazython:
             self: 'Lazython',
     ) -> None:
         """Focus the next tab."""
+        if len(self.__tabs) == 0:
+            return
         previous_tab = self.__tabs[self.__selected_tab]
         self.__selected_tab += 1
         self.__selected_tab %= len(self.__tabs)
@@ -209,6 +223,8 @@ class Lazython:
             self: 'Lazython',
     ) -> None:
         """Focus the previous tab."""
+        if len(self.__tabs) == 0:
+            return
         previous_tab = self.__tabs[self.__selected_tab]
         self.__selected_tab -= 1
         self.__selected_tab %= len(self.__tabs)
@@ -285,6 +301,9 @@ class Lazython:
         # Update self height.
         self.__tabs_box.set_height(self.__height - 1)
         self.__content_box.set_height(self.__height - 1)
+
+        if len(self.__tabs) == 0:
+            return
 
         self.__min_height = sum([tab.get_min_height() for tab in self.__tabs]) + 2 * len(self.__tabs)
         self.__strict_min_height = max([tab.get_min_height() for tab in self.__tabs]) + 2 + len(self.__tabs) - 1
