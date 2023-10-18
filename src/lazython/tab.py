@@ -61,6 +61,12 @@ class Tab:
         self.__lines.append(new_line)
         return new_line
 
+    def clear_lines(
+            self: 'Tab',
+    ) -> None:
+        """Clear the lines."""
+        self.__lines = []
+
     def set_tab_width(
             self: 'Tab',
             width: int,
