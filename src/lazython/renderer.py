@@ -12,13 +12,13 @@ class Renderer:
 
     class R:
         def start(self):
-            sys.stdout.write('\x1b[?1049h')
-            sys.stdout.write('\x1b[?25l')
+            sys.stdout.write('\x1b[?1049h')  # Save screen.
+            sys.stdout.write('\x1b[?25l')  # Hide cursor.
             sys.stdout.flush()
 
         def stop(self):
-            sys.stdout.write('\x1b[?1049l')
-            sys.stdout.write('\x1b[?25h')
+            sys.stdout.write('\x1b[?1049l')  # Restore screen.
+            sys.stdout.write('\x1b[?25h')  # Show cursor.
             sys.stdout.flush()
 
         def __del__(self):

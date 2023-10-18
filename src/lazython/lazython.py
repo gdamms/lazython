@@ -63,6 +63,8 @@ class Lazython:
 
         self.__running = False
 
+        self.__key_map = {}
+
     def start(
             self: 'Lazython',
     ) -> None:
@@ -79,7 +81,7 @@ class Lazython:
 
             # Quit when `esc` or `q` or `ctrl` + `c` is pressed.
             if key == 27 or key == 113 or key == 0:
-                self.__running = False
+                self.stop()
 
             # Focus next tab when `tab` is pressed.
             elif key == 9:
@@ -113,6 +115,17 @@ class Lazython:
             elif key == 2117491483:
                 self.scroll_down()
 
+            # Execute the callbacks.
+            callbacks = self.__key_map.get(key, [])
+            for callback in callbacks:
+                callback()
+        stop()
+
+    def stop(
+            self: 'Lazython',
+    ) -> None:
+        """Stop the lazython."""
+        self.__running = False
         stop()
 
     def new_tab(
@@ -136,6 +149,21 @@ class Lazython:
         new_tab = Tab(name=name, subtabs=subtabs, height_weight=height_weight, min_height=min_height)
         self.__tabs.append(new_tab)
         return new_tab
+
+    def add_key(
+            self: 'Lazython',
+            key: int,
+            callback: callable,
+    ) -> None:
+        """Add a key callback.
+
+        Args:
+            key (int): The key code.
+            callback (callable): The callback.
+        """
+        callbacks: list[callable] = self.__key_map.get(key, [])
+        callbacks.append(callback)
+        self.__key_map[key] = callbacks
 
     def update(
             self: 'Lazython',
