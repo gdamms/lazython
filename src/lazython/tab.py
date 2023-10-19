@@ -307,7 +307,7 @@ class Tab:
 
         # Render lines.
         for i, line in enumerate(self.__lines[self.__tab_scroll:height - 2 + self.__tab_scroll]):
-            line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else DEFAULT_COLOR
+            line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else LINE_COLOR
             text = line_color + line.get_text()
             used_width, _ = addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
             text = ' ' * (width - 2 - used_width)
