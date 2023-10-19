@@ -1,4 +1,3 @@
-from .rstr import rstr
 from .line import Line
 from .box import Box
 from .renderer import addstr
@@ -18,8 +17,8 @@ class Tab:
             min_height: int = 1,
     ) -> None:
         # TODO: Check if the arguments are valid.
-        self.__name = rstr(name)
-        self.__subtabs = [rstr(subtab) for subtab in subtabs]
+        self.__name = name
+        self.__subtabs = subtabs
 
         self.__height_weight = height_weight  # The weight of the tab in the height calculation.
         self.__min_height = min_height  # The minimum height of the tab. It does not include the top and bottom lines.
@@ -235,9 +234,13 @@ class Tab:
     ) -> None:
         """Scroll down."""
         self.__content_scroll += 1
-        subtext_lines = self.__get_subtext_lines()
-        if self.__content_scroll > len(subtext_lines):
-            self.__content_scroll = len(subtext_lines)
+        width = self.__content_box.get_width()
+        height = self.__content_box.get_height()
+        content_text = self.get_selected_subtext()
+        _, line_count = addstr(content_text, width=width - 2, no_draw=True)
+        max_scroll = line_count - height + 2
+        if self.__content_scroll > max_scroll:
+            self.__content_scroll = max_scroll
 
     def render_tab(
             self: 'Tab',
@@ -245,47 +248,65 @@ class Tab:
         """Render the tab."""
         width = self.__tab_box.get_width()
         height = self.__tab_box.get_height()
-        y = self.__tab_box.get_y()
         x = self.__tab_box.get_x()
+        y = self.__tab_box.get_y()
+
+        # Set the tab color.
+        tab_color = TAB_SELECTED_COLOR if self.__selected else DEFAULT_COLOR
+        addstr(tab_color)
 
         # Minimized tab.
         if height == 0:
-            text = '╶─' + self.__name[:width - 4] + '─' * (width - 4 - len(self.__name)) + '─╴'
-            addstr(y, x, text)
+            # Render a simple line.
+            text = '╶╴'
+            addstr(text, x=x, y=y)
+            text = self.__name
+            used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+            text = '╶' + '─' * (width - 4 - used_width) + '╴'
+            addstr(text, x=x + 2 + used_width, y=y)
             return
 
-        # Render tab name.
-        tab_color = TAB_SELECTED_COLOR if self.__selected else DEFAULT_COLOR
-        text = tab_color + \
-            '┌╴' + self.__name[: width - 4] + '╶' + '─' * (width - 4 - len(self.__name)) + '┐' + DEFAULT_COLOR
-        addstr(y, x, text)
+        # Render top line.
+        text = '┌╴'
+        addstr(text, x=x, y=y)
+        text = self.__name
+        used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+        text = '╶' + '─' * (width - 4 - used_width) + '┐'
+        addstr(text, x=x + 2 + used_width, y=y)
 
         # Right line.
         if len(self.__lines) <= height - 2 or height < 6:
             # If there is no need for a scroll bar, or if the tab is too small, render a simple line.
-            right_line = '│' * (height - 2)
+            text = '│' * (height - 2)
         else:
             # Scroll bar.
-            right_line = '▲'
+            text = '▲'
             bar_portion = (height - 2) / len(self.__lines)
             bar_nb = max(1, int(bar_portion * (height - 4)))
             scroll_portion = self.__tab_scroll / len(self.__lines)
             scroll_nb = round(scroll_portion * (height - 4))
-            right_line += '│' * scroll_nb
-            right_line += '█' * bar_nb
-            right_line += '│' * (height - 4 - scroll_nb - bar_nb)
-            right_line += '▼'
+            text += '│' * scroll_nb
+            text += '█' * bar_nb
+            text += '│' * (height - 4 - scroll_nb - bar_nb)
+            text += '▼'
+        addstr(text, x=x + width - 1, y=y + 1, width=1, height=height - 2)
 
-        # Render lines.
-        lines_lines = self.__get_lines_lines()
-        for i, line in enumerate(lines_lines):
-            line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else DEFAULT_COLOR
-            text = tab_color + '│' + line_color + line + tab_color + right_line[i] + DEFAULT_COLOR
-            addstr(y + i + 1, x, text)
+        # Left line.
+        text = '│' * (height - 2)
+        addstr(text, x=x, y=y + 1, width=1, height=height - 2)
 
         # Render bottom line.
-        text = tab_color + '└' + '─' * (width - 2) + '┘' + DEFAULT_COLOR
-        addstr(y + height - 1, x, text)
+        text = '└' + '─' * (width - 2) + '┘'
+        addstr(text, x=x, y=y + height - 1, width=width, height=1)
+
+        # Render lines.
+        for i, line in enumerate(self.__lines[self.__tab_scroll:height - 2 + self.__tab_scroll]):
+            line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else DEFAULT_COLOR
+            text = line_color + line.get_text()
+            addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
+
+        # Reset cursor color.
+        addstr(DEFAULT_COLOR)
 
     def render_content(
             self: 'Tab',
@@ -299,25 +320,47 @@ class Tab:
         # Render the top line.
         if len(self.__subtabs) == 0:
             text = '┌' + '─' * (width - 2) + '┐'
-            addstr(y, x, text)
+            addstr(text, x=x, y=y, width=width, height=1)
         else:
             colored_subtabs = [
                 subtab if i != self.__selected_subtab else SUBTAB_SELECTED_COLOR + subtab + DEFAULT_COLOR
                 for i, subtab in enumerate(self.__subtabs)
             ]
-            text = rstr('╶╴'.join(colored_subtabs))
-            text = '┌╴' + text[:width - 4] + '╶' + '─' * (width - 4 - len(text)) + '┐'
-            addstr(y, x, text)
+            addstr('┌╴', x=x, y=y)
+            text = '╶╴'.join(colored_subtabs)
+            used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+            text = '╶' + '─' * (width - 4 - used_width) + '┐'
+            addstr(text, x=x + 2 + used_width, y=y)
 
-        # Render content.
-        content_lines = self.__get_content_lines()
-        for i, content_line in enumerate(content_lines):
-            text = '│' + content_line + ' ' * (width - 2 - len(content_line)) + '│'
-            addstr(y + i + 1, x, text)
+        # Render the content.
+        content_text = self.get_selected_subtext()
+        _, line_count = addstr(content_text, x=x + 1, y=y + 1, width=width - 2,
+                               height=height - 2, scroll=self.__content_scroll)
+
+        # Right line.
+        if line_count <= height - 2 or height < 6:
+            # If there is no need for a scroll bar, or if the tab is too small, render a simple line.
+            right_line = '│' * (height - 2)
+        else:
+            # Scroll bar.
+            right_line = '▲'
+            bar_portion = (height - 2) / line_count
+            bar_nb = max(1, int(bar_portion * (height - 4)))
+            scroll_portion = self.__content_scroll / line_count
+            scroll_nb = round(scroll_portion * (height - 4))
+            right_line += '│' * scroll_nb
+            right_line += '█' * bar_nb
+            right_line += '│' * (height - 4 - scroll_nb - bar_nb)
+            right_line += '▼'
+        addstr(right_line, x=x + width - 1, y=y + 1, width=1, height=height - 2)
+
+        # Left line.
+        text = '│' * (height - 2)
+        addstr(text, x=x, y=y + 1, width=1, height=height - 2)
 
         # Render the bottom line.
         text = '└' + '─' * (width - 2) + '┘'
-        addstr(y + height - 1, x, text)
+        addstr(text, x=x, y=y + height - 1, width=width, height=1)
 
     def __reset_content_scroll(
             self: 'Tab',
@@ -368,7 +411,7 @@ class Tab:
 
     def __get_subtext_lines(
             self: 'Tab',
-    ) -> str:
+    ) -> list[str]:
         subtext = self.get_selected_subtext()
         subtext_lines = subtext.split('\n')
         width = self.__content_box.get_width() - 2
@@ -380,25 +423,13 @@ class Tab:
 
     def __get_content_lines(
             self: 'Tab',
-    ) -> str:
+    ) -> list[str]:
         height = self.__content_box.get_height()
         width = self.__content_box.get_width()
         subtext_lines = self.__get_subtext_lines()
         subtext_lines = subtext_lines[self.__content_scroll:height-2+self.__content_scroll]
         subtext_lines += [' ' * (width - 2)] * (height - len(subtext_lines) - 2)
         return subtext_lines
-
-    def __get_lines_lines(
-            self: 'Tab',
-    ) -> str:
-        height = self.__tab_box.get_height()
-        width = self.__tab_box.get_width()
-        lines_lines = [line.get_line_line() for line in self.__lines]
-        lines_lines = [line[:self.__tab_box.get_width() - 2] for line in lines_lines]
-        lines_lines = [line + ' ' * (width - len(line) - 2) for line in lines_lines]
-        lines_lines = lines_lines[self.__tab_scroll:height-2+self.__tab_scroll]
-        lines_lines += [' ' * (width - 2)] * (height - len(lines_lines) - 2)
-        return lines_lines
 
     def __update_tab_scroll(
             self: 'Tab',

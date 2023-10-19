@@ -1,4 +1,3 @@
-from .rstr import rstr
 
 
 class Line:
@@ -14,23 +13,21 @@ class Line:
             text: str = '',
             subtexts: list[str] = [],
     ) -> None:
-        self.__text = rstr(text)
-        self.__subtexts = [rstr(subtext) for subtext in subtexts]
+        self.__text = text
+        self.__subtexts = subtexts
 
         self.__id = Line.__ID
         Line.__ID += 1
 
-    def get_line_line(
+    def get_text(
             self: 'Line',
     ) -> str:
-        """Get the line line.
+        """Get the text.
 
         Returns:
-            str: The line line.
-
-        Basically, the line line is the first line of the text.
+            str: The text.
         """
-        return self.__text.split('\n')[0]
+        return self.__text
 
     def get_subtext(
             self: 'Line',
