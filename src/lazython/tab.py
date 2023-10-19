@@ -233,11 +233,17 @@ class Tab:
             self: 'Tab',
     ) -> None:
         """Scroll down."""
-        self.__content_scroll += 1
         width = self.__content_box.get_width()
         height = self.__content_box.get_height()
         content_text = self.get_selected_subtext()
+
+        # Check if there is a need to scroll.
         _, line_count = addstr(content_text, width=width - 2, no_draw=True)
+        if line_count <= height - 2:
+            return
+
+        # Scroll.
+        self.__content_scroll += 1
         max_scroll = line_count - height + 2
         if self.__content_scroll > max_scroll:
             self.__content_scroll = max_scroll
@@ -303,7 +309,9 @@ class Tab:
         for i, line in enumerate(self.__lines[self.__tab_scroll:height - 2 + self.__tab_scroll]):
             line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else DEFAULT_COLOR
             text = line_color + line.get_text()
-            addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
+            used_width, _ = addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
+            text = ' ' * (width - 2 - used_width)
+            addstr(text, x=x + 1 + used_width, y=y + i + 1, width=width - 2 - used_width, height=1)
 
         # Reset cursor color.
         addstr(DEFAULT_COLOR)
