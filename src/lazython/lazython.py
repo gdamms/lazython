@@ -77,6 +77,7 @@ class Lazython:
         self.__listener = Listener()
 
         self.__listener.add_key_callback(self.key_callback)
+        self.__listener.add_click_callback(self.click_callback)
 
     def main(
             self: 'Lazython',
@@ -193,6 +194,56 @@ class Lazython:
         callbacks = self.__key_map.get(key, [])
         for callback in callbacks:
             callback()
+
+    def click_callback(
+            self: 'Lazython',
+            key: int,
+            x: int,
+            y: int,
+    ) -> None:
+        """The click callback.
+
+        Args:
+            key (int): The key code.
+            x (int): The x.
+            y (int): The y.
+        """
+        if len(self.__tabs) == 0:
+            return
+
+        if key == 0:
+            # Left click.
+            if x < self.__tabs_box.get_width():
+                # Tab click.
+                current_y = 0
+                for i, tab in enumerate(self.__tabs):
+                    if current_y <= y < current_y + tab.get_tab_height():
+                        # Select the tab.
+                        self.__tabs[self.__selected_tab].unselect()
+                        self.__selected_tab = i
+                        self.__tabs[self.__selected_tab].select()
+
+                        # Select the line.
+                        line = y - current_y - 1
+                        if line < 0:
+                            break
+                        if line >= self.__tabs[self.__selected_tab].get_nb_lines():
+                            break
+
+                        self.__tabs[self.__selected_tab].select_line(line)
+                        break
+                    current_y += tab.get_tab_height() if tab.get_tab_height() > 0 else 1
+            else:
+                # Content click.
+                # TODO: Select the subtab.
+                pass
+
+        elif key == 64:
+            # Scroll up.
+            self.scroll_up()
+        elif key == 65:
+            # Scroll down.
+            self.scroll_down()
 
     def add_key(
             self: 'Lazython',

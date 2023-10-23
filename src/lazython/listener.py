@@ -76,28 +76,24 @@ class Listener:
                 # Read.
                 r, _, _ = select.select([sys.stdin], [], [])
                 if r:
-                    ch_set = []
+                    ch_set = ''
                     ch = os.read(sys.stdin.fileno(), 1)
                     while ch is not None and len(ch) > 0:
-                        ch_set.append(ch)
+                        ch_set += ch.decode('ISO-8859-1')
                         ch = os.read(sys.stdin.fileno(), 1)
-                    key = ch_set
 
                     # Click callback.
                     click_expr = r'\x1b\[M(.)(.)(.)'
-                    if match := re.match(click_expr, str(key)):
+                    if match := re.match(click_expr, ch_set):
                         key, x, y = match.groups()
-                        key, x, y = ord(key), ord(x), ord(y)
-                        key = key - 32
-                        x = x - 32 if x < 128 else x - 56448 + 128 - 32
-                        y = y - 32 if y < 128 else y - 56448 + 128 - 32
+                        key, x, y = ord(key) - 32, ord(x) - 32, ord(y) - 32
                         for callback in self.click_callbacks:
-                            callback(key, x, y)
+                            callback(key, x - 1, y - 1)
                         continue
 
                     # Convert to int.
                     val = 0
-                    for i, ch in enumerate(key):
+                    for i, ch in enumerate(ch_set):
                         val += ord(ch) << (8 * i)
 
                     # Key callback.
@@ -111,3 +107,21 @@ class Listener:
                     callback(val)
 
         self.terminate()
+
+
+if __name__ == '__main__':
+    listener = Listener()
+
+    def key_callback(key):
+        print(f'Key: {key}')
+        if key == 0:
+            listener.stop()
+
+    def click_callback(key, x, y):
+        print(f'Click: {key} x: {x} y: {y}')
+
+    listener.add_key_callback(key_callback)
+    listener.add_click_callback(click_callback)
+
+    print('Press `ctrl` + `c` to stop.')
+    listener.listen()

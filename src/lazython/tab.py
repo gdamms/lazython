@@ -179,6 +179,20 @@ class Tab:
         self.__update_tab_scroll()
         self.__reset_content_scroll()
 
+    def select_line(
+            self: 'Tab',
+            line: int,
+    ) -> None:
+        """Select the specified line.
+
+        Args:
+            line (int): The line.
+        """
+        self.__selected_line = line
+        self.__selected_line %= len(self.__lines)
+        self.__update_tab_scroll()
+        self.__reset_content_scroll()
+
     def next_subtab(
             self: 'Tab',
     ) -> None:
@@ -208,6 +222,16 @@ class Tab:
             Line: The selected line.
         """
         return self.__lines[self.__selected_line]
+
+    def get_nb_lines(
+            self: 'Tab',
+    ) -> int:
+        """Get the number of lines.
+
+        Returns:
+            int: The number of lines.
+        """
+        return len(self.__lines)
 
     def get_selected_subtext(
             self: 'Tab',
@@ -310,7 +334,9 @@ class Tab:
 
         # Render lines.
         for i, line in enumerate(self.__lines[self.__tab_scroll:height - 2 + self.__tab_scroll]):
-            line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else LINE_COLOR
+            line_color = LINE_COLOR
+            if i + self.__tab_scroll == self.__selected_line and self.__selected:
+                line_color += LINE_SELECTED_COLOR
             text = line_color + line.get_text()
             used_width, _ = self.__renderer.addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
             text = ' ' * (width - 2 - used_width)
