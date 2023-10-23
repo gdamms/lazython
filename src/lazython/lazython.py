@@ -1,18 +1,15 @@
 import os
+import threading
+import time
 
 from .box import Box
 from .tab import Tab
-from .get_key import get_key
-from .renderer import addstr, refresh, clear, start, stop
+from .renderer import Renderer
+from .listener import Listener
 
 
 class Lazython:
     """The lazython class.
-
-    Args:
-        tabs_width (float, optional): The width of the tabs as a percentage of the terminal width. Defaults to 0.4.
-        tabs_min_width (int, optional): The minimum width of the tabs. Defaults to 10.
-        content_min_width (int, optional): The minimum width of the content. Defaults to 10.
 
     Methods:
         start(): Start the lazython.
@@ -29,7 +26,6 @@ class Lazython:
         previous_subtab(): Focus the previous subtab.
         scroll_up(): Scroll up in the tab content.
         scroll_down(): Scroll down in the tab content.
-
     """
 
     def __init__(
@@ -37,7 +33,17 @@ class Lazython:
             tabs_width: float = 0.4,
             tabs_min_width: int = 10,
             content_min_width: int = 10,
+            refresh_delay: float = 0.1,
     ) -> None:
+        """Initialize the lazython.
+
+        Args:
+            self (Lazython): _description_
+            tabs_width (float, optional): The width of the tabs as a percentage of the terminal width. Defaults to 0.4.
+            tabs_min_width (int, optional): The minimum width of the tabs. Defaults to 10.
+            content_min_width (int, optional): The minimum width of the content. Defaults to 10.
+            refresh_delay (float, optional): The refresh delay. Defaults to 0.1.
+        """
         # TODO: Check if the arguments are valid.
         if tabs_min_width < 4:
             raise ValueError('Tabs min width must be at least 4.')
@@ -63,7 +69,32 @@ class Lazython:
 
         self.__running = False
 
+        self.__refresh_delay = refresh_delay
+
         self.__key_map = {}
+
+        self.__renderer = Renderer()
+        self.__listener = Listener()
+
+        self.__listener.add_key_callback(self.key_callback)
+
+    def main(
+            self: 'Lazython',
+    ) -> None:
+        """The main function.
+
+        This function will start the lazython and will block until the lazython is stopped.
+        """
+        last_time = time.time()
+        while self.__running:
+            self.render()
+
+            # Wait for the next frame.
+            current_time = time.time()
+            delay = self.__refresh_delay - (current_time - last_time)
+            if delay > 0:
+                time.sleep(delay)
+            last_time = current_time
 
     def start(
             self: 'Lazython',
@@ -72,61 +103,23 @@ class Lazython:
 
         This method will start the lazython and will block until the lazython is stopped.
         """
-        start()
+        if self.__running:
+            raise Exception('The lazython is already running.')
+
         self.__running = True
-        while self.__running:
-            self.render()
-
-            key = get_key(timeout=0.1)
-
-            # Quit when `esc` or `q` or `ctrl` + `c` is pressed.
-            if key == 27 or key == 113 or key == 0:
-                self.stop()
-
-            # Focus next tab when `tab` is pressed.
-            elif key == 9:
-                self.next_tab()
-
-            # Focus previous tab when `shift` + `tab` is pressed.
-            elif key == 5921563:
-                self.previous_tab()
-
-            # Focus next line when `down` is pressed.
-            elif key == 4348699:
-                self.next_line()
-
-            # Focus previous line when `up` is pressed.
-            elif key == 4283163:
-                self.previous_line()
-
-            # Focus next subtab when `right` is pressed.
-            elif key == 4414235:
-                self.next_subtab()
-
-            # Focus previous subtab when `left` is pressed.
-            elif key == 4479771:
-                self.previous_subtab()
-
-            # Scroll up when `page up` is pressed.
-            elif key == 2117425947:
-                self.scroll_up()
-
-            # Scroll down when `page down` is pressed.
-            elif key == 2117491483:
-                self.scroll_down()
-
-            # Execute the callbacks.
-            callbacks = self.__key_map.get(key, [])
-            for callback in callbacks:
-                callback()
-        stop()
+        self.__renderer.start()
+        threading.Thread(target=self.main).start()
+        self.__listener.listen()
 
     def stop(
             self: 'Lazython',
     ) -> None:
         """Stop the lazython."""
+        if not self.__running:
+            raise Exception('The lazython is not running.')
+        self.__listener.stop()
+        self.__renderer.stop()
         self.__running = False
-        stop()
 
     def new_tab(
             self: 'Lazython',
@@ -146,9 +139,60 @@ class Lazython:
         Returns:
             Tab: The new tab.
         """
-        new_tab = Tab(name=name, subtabs=subtabs, height_weight=height_weight, min_height=min_height)
+        new_tab = Tab(name=name, subtabs=subtabs, height_weight=height_weight,
+                      min_height=min_height, renderer=self.__renderer)
         self.__tabs.append(new_tab)
         return new_tab
+
+    def key_callback(
+            self: 'Lazython',
+            key: int,
+    ) -> None:
+        """The key callback.
+
+        Args:
+            key (int): The key code.
+        """
+        # Quit when `esc` or `q` or `ctrl` + `c` is pressed.
+        if key == 27 or key == 113 or key == 0:
+            self.stop()
+
+        # Focus next tab when `tab` is pressed.
+        elif key == 9:
+            self.next_tab()
+
+        # Focus previous tab when `shift` + `tab` is pressed.
+        elif key == 5921563:
+            self.previous_tab()
+
+        # Focus next line when `down` is pressed.
+        elif key == 4348699:
+            self.next_line()
+
+        # Focus previous line when `up` is pressed.
+        elif key == 4283163:
+            self.previous_line()
+
+        # Focus next subtab when `right` is pressed.
+        elif key == 4414235:
+            self.next_subtab()
+
+        # Focus previous subtab when `left` is pressed.
+        elif key == 4479771:
+            self.previous_subtab()
+
+        # Scroll up when `page up` is pressed.
+        elif key == 2117425947:
+            self.scroll_up()
+
+        # Scroll down when `page down` is pressed.
+        elif key == 2117491483:
+            self.scroll_down()
+
+        # Execute the callbacks.
+        callbacks = self.__key_map.get(key, [])
+        for callback in callbacks:
+            callback()
 
     def add_key(
             self: 'Lazython',
@@ -180,18 +224,18 @@ class Lazython:
         """Render the lazython."""
         self.update()
 
-        clear()
+        self.__renderer.clear()
 
         if len(self.__tabs) == 0:
-            addstr('No tab.')
+            self.__renderer.addstr('No tab.')
             self.__render_footer()
-            refresh()
+            self.__renderer.refresh()
             return
 
         if not self.is_renderable():
-            addstr('Terminal too small.')
+            self.__renderer.addstr('Terminal too small.')
             self.__render_footer()
-            refresh()
+            self.__renderer.refresh()
             return
 
         for tab in self.__tabs:
@@ -202,7 +246,7 @@ class Lazython:
 
         self.__render_footer()
 
-        refresh()
+        self.__renderer.refresh()
 
     def is_renderable(
             self: 'Lazython',
@@ -389,4 +433,4 @@ class Lazython:
             self: 'Lazython',
     ) -> None:
         text = 'Tab/Shift+Tab: Switch tab | ↑ ↓: Switch line | ← →: Switch subtab | q: Quit'
-        addstr(text[:self.__width], x=0, y=self.__height - 1)
+        self.__renderer.addstr(text[:self.__width], x=0, y=self.__height - 1)

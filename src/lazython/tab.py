@@ -1,6 +1,6 @@
 from .line import Line
 from .box import Box
-from .renderer import addstr
+from .renderer import Renderer
 from .vars import *
 
 
@@ -15,6 +15,7 @@ class Tab:
             subtabs: list[str] = [],
             height_weight: float = 1,
             min_height: int = 1,
+            renderer: 'Renderer' = None,
     ) -> None:
         # TODO: Check if the arguments are valid.
         self.__name = name
@@ -35,6 +36,8 @@ class Tab:
         self.__content_scroll = 0
 
         self.__selected = False
+
+        self.__renderer = renderer
 
         self.id = Tab.ID
         Tab.ID += 1
@@ -238,7 +241,7 @@ class Tab:
         content_text = self.get_selected_subtext()
 
         # Check if there is a need to scroll.
-        _, line_count = addstr(content_text, width=width - 2, no_draw=True)
+        _, line_count = self.__renderer.addstr(content_text, width=width - 2, no_draw=True)
         if line_count <= height - 2:
             return
 
@@ -259,26 +262,26 @@ class Tab:
 
         # Set the tab color.
         tab_color = TAB_SELECTED_COLOR if self.__selected else DEFAULT_COLOR
-        addstr(tab_color)
+        self.__renderer.addstr(tab_color)
 
         # Minimized tab.
         if height == 0:
             # Render a simple line.
             text = '╶╴'
-            addstr(text, x=x, y=y)
+            self.__renderer.addstr(text, x=x, y=y)
             text = self.__name
-            used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+            used_width, _ = self.__renderer.addstr(text, x=x + 2, y=y, width=width - 4, height=1)
             text = '╶' + '─' * (width - 4 - used_width) + '╴'
-            addstr(text, x=x + 2 + used_width, y=y)
+            self.__renderer.addstr(text, x=x + 2 + used_width, y=y)
             return
 
         # Render top line.
         text = '┌╴'
-        addstr(text, x=x, y=y)
+        self.__renderer.addstr(text, x=x, y=y)
         text = self.__name
-        used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+        used_width, _ = self.__renderer.addstr(text, x=x + 2, y=y, width=width - 4, height=1)
         text = '╶' + '─' * (width - 4 - used_width) + '┐'
-        addstr(text, x=x + 2 + used_width, y=y)
+        self.__renderer.addstr(text, x=x + 2 + used_width, y=y)
 
         # Right line.
         if len(self.__lines) <= height - 2 or height < 6:
@@ -295,26 +298,26 @@ class Tab:
             text += '█' * bar_nb
             text += '│' * (height - 4 - scroll_nb - bar_nb)
             text += '▼'
-        addstr(text, x=x + width - 1, y=y + 1, width=1, height=height - 2)
+        self.__renderer.addstr(text, x=x + width - 1, y=y + 1, width=1, height=height - 2)
 
         # Left line.
         text = '│' * (height - 2)
-        addstr(text, x=x, y=y + 1, width=1, height=height - 2)
+        self.__renderer.addstr(text, x=x, y=y + 1, width=1, height=height - 2)
 
         # Render bottom line.
         text = '└' + '─' * (width - 2) + '┘'
-        addstr(text, x=x, y=y + height - 1, width=width, height=1)
+        self.__renderer.addstr(text, x=x, y=y + height - 1, width=width, height=1)
 
         # Render lines.
         for i, line in enumerate(self.__lines[self.__tab_scroll:height - 2 + self.__tab_scroll]):
             line_color = LINE_SELECTED_COLOR if i + self.__tab_scroll == self.__selected_line and self.__selected else LINE_COLOR
             text = line_color + line.get_text()
-            used_width, _ = addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
+            used_width, _ = self.__renderer.addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
             text = ' ' * (width - 2 - used_width)
-            addstr(text, x=x + 1 + used_width, y=y + i + 1, width=width - 2 - used_width, height=1)
+            self.__renderer.addstr(text, x=x + 1 + used_width, y=y + i + 1, width=width - 2 - used_width, height=1)
 
         # Reset cursor color.
-        addstr(DEFAULT_COLOR)
+        self.__renderer.addstr(DEFAULT_COLOR)
 
     def render_content(
             self: 'Tab',
@@ -328,22 +331,22 @@ class Tab:
         # Render the top line.
         if len(self.__subtabs) == 0:
             text = '┌' + '─' * (width - 2) + '┐'
-            addstr(text, x=x, y=y, width=width, height=1)
+            self.__renderer.addstr(text, x=x, y=y, width=width, height=1)
         else:
             colored_subtabs = [
                 subtab if i != self.__selected_subtab else SUBTAB_SELECTED_COLOR + subtab + DEFAULT_COLOR
                 for i, subtab in enumerate(self.__subtabs)
             ]
-            addstr('┌╴', x=x, y=y)
+            self.__renderer.addstr('┌╴', x=x, y=y)
             text = '╶╴'.join(colored_subtabs)
-            used_width, _ = addstr(text, x=x + 2, y=y, width=width - 4, height=1)
+            used_width, _ = self.__renderer.addstr(text, x=x + 2, y=y, width=width - 4, height=1)
             text = '╶' + '─' * (width - 4 - used_width) + '┐'
-            addstr(text, x=x + 2 + used_width, y=y)
+            self.__renderer.addstr(text, x=x + 2 + used_width, y=y)
 
         # Render the content.
         content_text = self.get_selected_subtext()
-        _, line_count = addstr(content_text, x=x + 1, y=y + 1, width=width - 2,
-                               height=height - 2, scroll=self.__content_scroll)
+        _, line_count = self.__renderer.addstr(content_text, x=x + 1, y=y + 1, width=width - 2,
+                                               height=height - 2, scroll=self.__content_scroll)
 
         # Right line.
         if line_count <= height - 2 or height < 6:
@@ -360,15 +363,15 @@ class Tab:
             right_line += '█' * bar_nb
             right_line += '│' * (height - 4 - scroll_nb - bar_nb)
             right_line += '▼'
-        addstr(right_line, x=x + width - 1, y=y + 1, width=1, height=height - 2)
+        self.__renderer.addstr(right_line, x=x + width - 1, y=y + 1, width=1, height=height - 2)
 
         # Left line.
         text = '│' * (height - 2)
-        addstr(text, x=x, y=y + 1, width=1, height=height - 2)
+        self.__renderer.addstr(text, x=x, y=y + 1, width=1, height=height - 2)
 
         # Render the bottom line.
         text = '└' + '─' * (width - 2) + '┘'
-        addstr(text, x=x, y=y + height - 1, width=width, height=1)
+        self.__renderer.addstr(text, x=x, y=y + height - 1, width=width, height=1)
 
     def __reset_content_scroll(
             self: 'Tab',
