@@ -248,16 +248,53 @@ class Tab:
             return ''
         return line.get_subtext(self.__selected_subtab)
 
+    def get_content_scroll(
+            self: 'Tab',
+    ) -> int:
+        """Get the content scroll.
+
+        Returns:
+            int: The content scroll.
+        """
+        return self.__content_scroll
+
+    def get_content_height(
+            self: 'Tab',
+    ) -> int:
+        """Get the content height.
+
+        Returns:
+            int: The content height.
+        """
+        return self.__content_box.get_height()
+
+    def get_content_width(
+            self: 'Tab',
+    ) -> int:
+        """Get the content width.
+
+        Returns:
+            int: The content width.
+        """
+        return self.__content_box.get_width()
+
     def scroll_up(
             self: 'Tab',
+            scroll: int = 1,
     ) -> None:
         """Scroll up."""
-        self.__content_scroll -= 1
+        if scroll < 0:
+            # Scroll to beginning.
+            self.__content_scroll = 0
+            return
+
+        self.__content_scroll -= scroll
         if self.__content_scroll < 0:
             self.__content_scroll = 0
 
     def scroll_down(
             self: 'Tab',
+            scroll: int = 1,
     ) -> None:
         """Scroll down."""
         width = self.__content_box.get_width()
@@ -265,13 +302,18 @@ class Tab:
         content_text = self.get_selected_subtext()
 
         # Check if there is a need to scroll.
-        _, line_count = self.__renderer.addstr(content_text, width=width - 2, no_draw=True)
+        _, line_count = Renderer.get_size(content_text, width=width - 2)
         if line_count <= height - 2:
             return
 
         # Scroll.
-        self.__content_scroll += 1
         max_scroll = line_count - height + 2
+        if scroll < 0:
+            # Scroll to end.
+            self.__content_scroll = max_scroll
+            return
+
+        self.__content_scroll += scroll
         if self.__content_scroll > max_scroll:
             self.__content_scroll = max_scroll
 

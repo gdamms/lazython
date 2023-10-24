@@ -226,3 +226,21 @@ class Renderer:
             self.buffer = buffer_backup
 
         return cursor_max_x - cursor_min_x, cursor_max_y - cursor_min_y
+
+    @staticmethod
+    def get_size(
+        test: str,
+        width: int,
+    ) -> tuple[int, int]:
+        """Get the size of a string.
+
+        Args:
+            test (str): The string.
+            width (int): The width.
+
+        Returns:
+            tuple[int, int]: The number of columns and the number of lines.
+        """
+        renderer = Renderer()
+        size = renderer.addstr(test, width=width, no_draw=True)
+        return size
