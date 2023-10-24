@@ -14,6 +14,8 @@ exprs = [
     NEWLINE_EXPR := r'\n',
     TAB_EXPR := r'\t',
     ERASE_END_OF_LINE_EXPR := r'\x1b\[K',
+    RETURN_ERASE_END_OF_LINE_EXPR := r'\x1b\[2K',
+    MOVE_UP_EXPR := r'\x1b\[\d*A',
 ]
 
 FULL_EXPR = f'({"|".join(exprs)})'
@@ -194,6 +196,17 @@ class Renderer:
                         self.goto(x, y + cursor_y)
                 elif re.match(ERASE_END_OF_LINE_EXPR, string):
                     self.buffer += ' ' * (width - cursor_x)
+                    self.goto(x + cursor_x, y + cursor_y)
+                elif re.match(RETURN_ERASE_END_OF_LINE_EXPR, string):
+                    cursor_x = 0
+                    self.goto(x, y + cursor_y)
+                    self.buffer += ' ' * width
+                    self.goto(x, y + cursor_y)
+                elif re.match(MOVE_UP_EXPR, string):
+                    value = re.match(r'\x1b\[(\d*)A', string).groups()[0]
+                    if value == '':
+                        value = 1
+                    cursor_y -= int(value)
                     self.goto(x + cursor_x, y + cursor_y)
                 else:
                     raise Exception('Invalid escape sequence.')
