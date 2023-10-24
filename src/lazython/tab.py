@@ -424,12 +424,22 @@ class Tab:
             # Scroll bar.
             right_line = '▲'
             bar_portion = (height - 2) / line_count
-            bar_nb = max(1, int(bar_portion * (height - 4)))
-            scroll_portion = self.__content_scroll / line_count
-            scroll_nb = round(scroll_portion * (height - 4))
-            right_line += '│' * scroll_nb
+            bar_nb = max(1, round(bar_portion * (height - 4)))
+            max_scroll = line_count - height + 2
+            if self.__content_scroll > max_scroll / 2:
+                # The scroll bar is at the bottom.
+                scroll_nb_bottom = line_count - self.__content_scroll - height + 2
+                scroll_nb_bottom /= line_count
+                scroll_nb_bottom = (scroll_nb_bottom * (height - 4)).__ceil__()
+                scroll_nb_top = height - 4 - bar_nb - scroll_nb_bottom
+            else:
+                # The scroll bar is at the top.
+                scroll_nb_top = self.__content_scroll / line_count
+                scroll_nb_top = (scroll_nb_top * (height - 4)).__ceil__()
+                scroll_nb_bottom = height - 4 - bar_nb - scroll_nb_top
+            right_line += '│' * scroll_nb_top
             right_line += '█' * bar_nb
-            right_line += '│' * (height - 4 - scroll_nb - bar_nb)
+            right_line += '│' * scroll_nb_bottom
             right_line += '▼'
         self.__renderer.addstr(right_line, x=x + width - 1, y=y + 1, width=1, height=height - 2)
 
