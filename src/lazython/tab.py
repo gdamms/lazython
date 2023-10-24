@@ -166,7 +166,7 @@ class Tab:
         self.__selected_line += 1
         self.__selected_line %= len(self.__lines)
         self.__update_tab_scroll()
-        self.__reset_content_scroll()
+        self.__update_content_scroll()
 
     def previous_line(
             self: 'Tab',
@@ -177,7 +177,7 @@ class Tab:
         self.__selected_line -= 1
         self.__selected_line %= len(self.__lines)
         self.__update_tab_scroll()
-        self.__reset_content_scroll()
+        self.__update_content_scroll()
 
     def select_line(
             self: 'Tab',
@@ -191,7 +191,7 @@ class Tab:
         self.__selected_line = line
         self.__selected_line %= len(self.__lines)
         self.__update_tab_scroll()
-        self.__reset_content_scroll()
+        self.__update_content_scroll()
 
     def next_subtab(
             self: 'Tab',
@@ -201,7 +201,7 @@ class Tab:
             return
         self.__selected_subtab += 1
         self.__selected_subtab %= len(self.__subtabs)
-        self.__reset_content_scroll()
+        self.__update_content_scroll()
 
     def previous_subtab(
             self: 'Tab',
@@ -211,7 +211,7 @@ class Tab:
             return
         self.__selected_subtab -= 1
         self.__selected_subtab %= len(self.__subtabs)
-        self.__reset_content_scroll()
+        self.__update_content_scroll()
 
     def get_selected_line(
             self: 'Tab',
@@ -221,6 +221,8 @@ class Tab:
         Returns:
             Line: The selected line.
         """
+        if len(self.__lines) == 0:
+            return Line()
         return self.__lines[self.__selected_line]
 
     def get_nb_lines(
@@ -244,7 +246,7 @@ class Tab:
         if len(self.__lines) == 0:
             return ''
         line = self.get_selected_line()
-        if line.get_nb_subtext() == 0:
+        if len(line.get_subtexts()) == 0:
             return ''
         return line.get_subtext(self.__selected_subtab)
 
@@ -283,39 +285,53 @@ class Tab:
             scroll: int = 1,
     ) -> None:
         """Scroll up."""
-        if scroll < 0:
+        line_scroll = self.get_selected_line().get_scroll(self.__selected_subtab)
+        if scroll < 0 or 0 <= line_scroll < scroll:
             # Scroll to beginning.
+            self.get_selected_line().set_scroll(self.__selected_subtab, 0)
             self.__content_scroll = 0
             return
 
-        self.__content_scroll -= scroll
-        if self.__content_scroll < 0:
-            self.__content_scroll = 0
+        if line_scroll < 0:
+            # Start from the end.
+            _, line_count = Renderer.get_size(self.get_selected_subtext(), width=self.__content_box.get_width() - 2)
+            new_scroll = line_count - self.__content_box.get_height() + 2
+        else:
+            new_scroll = self.get_selected_line().get_scroll(self.__selected_subtab)
+
+        # Scroll up.
+        new_scroll -= scroll
+        new_scroll = max(0, new_scroll)
+        self.get_selected_line().set_scroll(self.__selected_subtab, new_scroll)
+        self.__content_scroll = new_scroll
 
     def scroll_down(
             self: 'Tab',
             scroll: int = 1,
     ) -> None:
         """Scroll down."""
-        width = self.__content_box.get_width()
-        height = self.__content_box.get_height()
-        content_text = self.get_selected_subtext()
-
-        # Check if there is a need to scroll.
-        _, line_count = Renderer.get_size(content_text, width=width - 2)
-        if line_count <= height - 2:
-            return
-
-        # Scroll.
-        max_scroll = line_count - height + 2
         if scroll < 0:
             # Scroll to end.
-            self.__content_scroll = max_scroll
+            self.get_selected_line().set_scroll(self.__selected_subtab, -1)
+            self.__content_scroll = -1
             return
 
-        self.__content_scroll += scroll
-        if self.__content_scroll > max_scroll:
-            self.__content_scroll = max_scroll
+        line_scroll = self.get_selected_line().get_scroll(self.__selected_subtab)
+        if line_scroll < 0:
+            # Nothing to scroll, alreday at the end.
+            return
+
+        _, line_count = Renderer.get_size(self.get_selected_subtext(), width=self.__content_box.get_width() - 2)
+        new_scroll = self.get_selected_line().get_scroll(self.__selected_subtab)
+        new_scroll += scroll
+        if new_scroll > line_count - self.__content_box.get_height() + 2:
+            # Scroll to end.
+            self.get_selected_line().set_scroll(self.__selected_subtab, -1)
+            self.__content_scroll = -1
+            return
+
+        self.get_selected_line().set_scroll(self.__selected_subtab, new_scroll)
+        self.__content_scroll = new_scroll
 
     def render_tab(
             self: 'Tab',
@@ -413,8 +429,19 @@ class Tab:
 
         # Render the content.
         content_text = self.get_selected_subtext()
-        _, line_count = self.__renderer.addstr(content_text, x=x + 1, y=y + 1, width=width - 2,
-                                               height=height - 2, scroll=self.__content_scroll)
+        _, line_count = Renderer.get_size(content_text, width=width - 2)
+        scroll = self.__content_scroll
+        if scroll < 0:
+            scroll = line_count - height + 2
+        elif scroll > line_count - height + 2:
+            scroll = line_count - height + 2
+            self.get_selected_line().set_scroll(self.__selected_subtab, -1)
+            self.__content_scroll = scroll
+        scroll = max(0, scroll)
+        self.__renderer.addstr(content_text,
+                               x=x + 1, y=y + 1,
+                               width=width - 2, height=height - 2,
+                               scroll=scroll)
 
         # Right line.
         if line_count <= height - 2 or height < 6:
@@ -426,15 +453,15 @@ class Tab:
             bar_portion = (height - 2) / line_count
             bar_nb = max(1, round(bar_portion * (height - 4)))
             max_scroll = line_count - height + 2
-            if self.__content_scroll > max_scroll / 2:
+            if scroll > max_scroll / 2:
                 # The scroll bar is at the bottom.
-                scroll_nb_bottom = line_count - self.__content_scroll - height + 2
+                scroll_nb_bottom = line_count - scroll - height + 2
                 scroll_nb_bottom /= line_count
                 scroll_nb_bottom = (scroll_nb_bottom * (height - 4)).__ceil__()
                 scroll_nb_top = height - 4 - bar_nb - scroll_nb_bottom
             else:
                 # The scroll bar is at the top.
-                scroll_nb_top = self.__content_scroll / line_count
+                scroll_nb_top = scroll / line_count
                 scroll_nb_top = (scroll_nb_top * (height - 4)).__ceil__()
                 scroll_nb_bottom = height - 4 - bar_nb - scroll_nb_top
             right_line += '│' * scroll_nb_top
@@ -451,10 +478,10 @@ class Tab:
         text = '└' + '─' * (width - 2) + '┘'
         self.__renderer.addstr(text, x=x, y=y + height - 1, width=width, height=1)
 
-    def __reset_content_scroll(
+    def __update_content_scroll(
             self: 'Tab',
     ) -> None:
-        self.__content_scroll = 0
+        self.__content_scroll = self.get_selected_line().get_scroll(self.__selected_subtab)
 
     def select(
             self: 'Tab',
