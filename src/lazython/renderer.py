@@ -158,9 +158,17 @@ class Renderer:
                         cursor_x = 0
                         cursor_y += 1
                         self.goto(x, y + cursor_y)
+
+                    # Add char.
                     if 0 <= cursor_y < height:
                         self.buffer += char
                     cursor_x += 1
+
+                    # Update maxes.
+                    if cursor_x > cursor_max_x:
+                        cursor_max_x = cursor_x
+                    if cursor_y > cursor_max_y:
+                        cursor_max_y = cursor_y
             else:
                 # Escape sequence.
                 if re.match(COLOR_EXPR, string):
