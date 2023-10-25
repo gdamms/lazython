@@ -396,7 +396,7 @@ class Tab:
             if i + self.__tab_scroll == self.__selected_line and self.__selected:
                 line_color += LINE_SELECTED_COLOR
             text = line_color + line.get_text()
-            used_width, _ = self.__renderer.addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1)
+            used_width, _ = self.__renderer.addstr(text, x=x + 1, y=y + i + 1, width=width - 2, height=1, wrap=False)
             text = ' ' * (width - 2 - used_width)
             self.__renderer.addstr(text, x=x + 1 + used_width, y=y + i + 1, width=width - 2 - used_width, height=1)
 

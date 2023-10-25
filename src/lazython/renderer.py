@@ -107,6 +107,7 @@ class Renderer:
             height: int = -1,
             scroll: int = 0,
             no_draw: bool = False,
+            wrap: bool = True,
     ) -> tuple[int, int]:
         """Add a string to the screen.
 
@@ -154,6 +155,10 @@ class Renderer:
                 # Normal string.
                 for char in string:
                     if cursor_x >= width:
+                        if not wrap:
+                            self.goto(x + cursor_x - 1, y + cursor_y)
+                            self.buffer += '…'
+                            break
                         # Wrap.
                         cursor_x = 0
                         cursor_y += 1
