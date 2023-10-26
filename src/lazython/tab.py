@@ -48,19 +48,19 @@ class Tab:
     def add_key(
             self: 'Tab',
             key: int,
-            name: str,
-            help: str,
             callback: 'function',
+            name: str = None,
+            help: str = None,
     ) -> None:
         """Add a key shortcut.
 
         Args:
             key (int): The key.
-            name (str): The name.
-            help (str): The help.
             callback (function): The callback.
+            name (str): The name. Defaults to None means no display in the menu.
+            help (str): The help. Defaults to None means no display in the menu.
         """
-        self.__shortcuts.append(Shortcut(key=key, name=name, help=help, callback=callback))
+        self.__shortcuts.append(Shortcut(key=key, callback=callback, name=name, help=help))
 
     def get_key_callbacks(
             self: 'Tab',

@@ -246,8 +246,10 @@ class Lazython:
     ) -> None:
         """Select the next menu item."""
         self.__menu_selected += 1
-        if self.__menu_selected >= len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()):
-            self.__menu_selected = len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()) - 1
+        shorcuts = [shortcut for shortcut in self.__shortcuts if shortcut.displayable()] + \
+            [shortcut for shortcut in self.__tabs[self.__selected_tab].get_shortcuts() if shortcut.displayable()]
+        if self.__menu_selected >= len(shorcuts):
+            self.__menu_selected = len(shorcuts) - 1
 
     def menu_previous(
             self: 'Lazython',
@@ -285,13 +287,13 @@ class Lazython:
     ) -> None:
         """Render the menu."""
         # Get the menu size.
-        menu_width = max([len(shortcut.name) for shortcut in self.__shortcuts] +
-                         [len(shortcut.name) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
-        menu_width += max([len(shortcut.help) for shortcut in self.__shortcuts] +
-                          [len(shortcut.help) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
+        shortcuts = [shortcut for shortcut in self.__shortcuts if shortcut.displayable()] + \
+            [shortcut for shortcut in self.__tabs[self.__selected_tab].get_shortcuts() if shortcut.displayable()]
+        menu_width = max([len(shortcut.name) for shortcut in shortcuts])
+        menu_width += max([len(shortcut.help) for shortcut in shortcuts])
         menu_width += len(sep := ' : ')
         menu_width += 2
-        menu_height = len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()) + 2
+        menu_height = len(shortcuts) + 2
         if menu_width > self.__width:
             menu_width = self.__width
         if menu_height > self.__height - 1:
@@ -319,9 +321,8 @@ class Lazython:
         self.__renderer.addstr(text, x=menu_x + menu_width - 1, y=menu_y + 1, width=1)
 
         # Render shortcuts.
-        shortcut_width = max([len(shortcut.name) for shortcut in self.__shortcuts] +
-                             [len(shortcut.name) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
-        for i, shortcut in enumerate(self.__shortcuts + self.__tabs[self.__selected_tab].get_shortcuts()):
+        shortcut_width = max([len(shortcut.name) for shortcut in shortcuts])
+        for i, shortcut in enumerate(shortcuts):
             text = shortcut.name + ' ' * (shortcut_width - len(shortcut.name)) + sep + shortcut.help
             color = '\x1b[7m' if i == self.__menu_selected else ''
             end_color = '\x1b[0m' if i == self.__menu_selected else ''
@@ -381,19 +382,19 @@ class Lazython:
     def add_key(
             self: 'Lazython',
             key: int,
-            name: str,
-            help: str,
             callback: 'function',
+            name: str = None,
+            help: str = None,
     ) -> None:
         """Add a key shortcut.
 
         Args:
             key (int): The key.
-            name (str): The name.
-            help (str): The help.
             callback (function): The callback.
+            name (str): The name. Defaults to None means no display in the menu.
+            help (str): The help. Defaults to None means no display in the menu.
         """
-        self.__shortcuts.append(Shortcut(key=key, name=name, help=help, callback=callback))
+        self.__shortcuts.append(Shortcut(key=key, callback=callback, name=name, help=help))
 
     def update(
             self: 'Lazython',
