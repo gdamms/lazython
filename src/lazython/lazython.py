@@ -294,14 +294,20 @@ class Lazython:
         menu_width += len(sep := ' : ')
         menu_width += 2
         menu_height = len(shortcuts) + 2
-        if menu_width > self.__width:
-            menu_width = self.__width
-        if menu_height > self.__height - 1:
-            menu_height = self.__height - 1
+        if menu_width > self.__width - 1:
+            menu_width = self.__width - 1
+        if menu_height > self.__height - 2:
+            menu_height = self.__height - 2  # -2 for the footer and the white padding.
 
         # Get the menu position.
         menu_x = self.__width // 2 - menu_width // 2
         menu_y = self.__height // 2 - menu_height // 2
+
+        # Add white space.
+        self.__renderer.addstr(' ' * (menu_width + 2), x=menu_x - 1, y=menu_y - 1)
+        self.__renderer.addstr(' ' * (menu_width + 2), x=menu_x - 1, y=menu_y + menu_height)
+        self.__renderer.addstr(' ' * menu_height, x=menu_x - 1, y=menu_y, width=1)
+        self.__renderer.addstr(' ' * menu_height, x=menu_x + menu_width, y=menu_y, width=1)
 
         # Render top border.
         title = 'Menu'
