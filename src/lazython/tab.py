@@ -113,6 +113,17 @@ class Tab:
         """Clear the lines."""
         self.__lines = []
 
+    def delete_line(
+            self: 'Tab',
+            line: 'Line'
+    ) -> None:
+        """Delete the line.
+
+        Args:
+            line (Line): The line.
+        """
+        self.__lines.remove(line)
+
     def set_tab_width(
             self: 'Tab',
             width: int,
