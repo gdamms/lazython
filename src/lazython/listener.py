@@ -39,21 +39,21 @@ class Listener:
         # Restore settings.
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, self.old_settings)
 
-    def add_key_callback(self: 'Listener', callback: 'Callable[[int], None]'):
+    def add_key_callback(self: 'Listener', callback: 'function[[int], None]'):
         """Add a key callback.
 
         Args:
-            callback (Callable[[int], None]): The callback to add.
+            callback (function[[int], None]): The callback to add.
 
         The callback will be called with the key as an int.
         """
         self.key_callbacks.append(callback)
 
-    def add_click_callback(self: 'Listener', callback: 'Callable[[int, int, int], None]'):
+    def add_click_callback(self: 'Listener', callback: 'function[[int, int, int], None]'):
         """Add a click callback.
 
         Args:
-            callback (Callable[[int, int, int], None]): The callback to add.
+            callback (function[[int, int, int], None]): The callback to add.
 
         The callback will be called with the key, x and y as ints.
         """

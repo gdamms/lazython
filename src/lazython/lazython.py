@@ -6,6 +6,7 @@ from .box import Box
 from .tab import Tab
 from .renderer import Renderer
 from .listener import Listener
+from .shortcut import Shortcut
 
 
 class Lazython:
@@ -71,10 +72,13 @@ class Lazython:
 
         self.__refresh_delay = refresh_delay
 
-        self.__key_map = {}
+        self.__shortcuts: list[Shortcut] = []
 
         self.__renderer = Renderer()
         self.__listener = Listener()
+
+        self.__display_menu = False
+        self.__menu_selected = 0
 
         self.__listener.add_key_callback(self.key_callback)
         self.__listener.add_click_callback(self.click_callback)
@@ -154,9 +158,16 @@ class Lazython:
         Args:
             key (int): The key code.
         """
-        # Quit when `esc` or `q` or `ctrl` + `c` is pressed.
-        if key == 27 or key == 113 or key == 0:
+        # Quit when `ctrl` + `c` is pressed.
+        if key == 0:
             self.stop()
+
+        # Close when `esc` or `q` is pressed.
+        elif key == 27 or key == 113:
+            if self.__display_menu:
+                self.menu_quit()
+            else:
+                self.stop()
 
         # Focus next tab when `tab` is pressed.
         elif key == 9:
@@ -168,11 +179,17 @@ class Lazython:
 
         # Focus next line when `down` is pressed.
         elif key == 4348699:
-            self.next_line()
+            if self.__display_menu:
+                self.menu_next()
+            else:
+                self.next_line()
 
         # Focus previous line when `up` is pressed.
         elif key == 4283163:
-            self.previous_line()
+            if self.__display_menu:
+                self.menu_previous()
+            else:
+                self.previous_line()
 
         # Focus next subtab when `right` is pressed.
         elif key == 4414235:
@@ -190,10 +207,126 @@ class Lazython:
         elif key == 2117491483:
             self.scroll_down()
 
+        # Toggle menu when `x` is pressed.
+        elif key == 120:
+            self.menu_toggle()
+
+        # Execute menu item when `enter` is pressed.
+        elif key == 10:
+            if self.__display_menu:
+                self.menu_execute()
+                self.menu_quit()
+
         # Execute the callbacks.
-        callbacks = self.__key_map.get(key, [])
+        callbacks = [shortcut.callback for shortcut in self.__shortcuts if shortcut.key == key]
         for callback in callbacks:
             callback()
+        if len(callbacks) > 0:
+            self.menu_quit()
+
+        # Execute tab callbacks.
+        if len(self.__tabs) > 0:
+            callbacks = self.__tabs[self.__selected_tab].get_key_callbacks(key)
+            for callback in callbacks:
+                callback()
+            if len(callbacks) > 0:
+                self.menu_quit()
+
+    def menu_toggle(
+            self: 'Lazython',
+    ) -> None:
+        """Toggle the menu."""
+        if self.__display_menu:
+            self.menu_quit()
+        else:
+            self.menu_open()
+
+    def menu_next(
+            self: 'Lazython',
+    ) -> None:
+        """Select the next menu item."""
+        self.__menu_selected += 1
+        if self.__menu_selected >= len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()):
+            self.__menu_selected = len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()) - 1
+
+    def menu_previous(
+            self: 'Lazython',
+    ) -> None:
+        """Select the previous menu item."""
+        self.__menu_selected -= 1
+        if self.__menu_selected < 0:
+            self.__menu_selected = 0
+
+    def menu_open(
+            self: 'Lazython',
+    ) -> None:
+        """Open the menu."""
+        self.__display_menu = True
+        self.__menu_selected = 0
+
+    def menu_quit(
+            self: 'Lazython',
+    ) -> None:
+        """Quit the menu."""
+        self.__display_menu = False
+        self.__menu_selected = 0
+
+    def menu_execute(
+            self: 'Lazython',
+    ) -> None:
+        """Execute the selected menu item."""
+        if self.__menu_selected < len(self.__shortcuts):
+            self.__shortcuts[self.__menu_selected].callback()
+        else:
+            self.__tabs[self.__selected_tab].get_shortcuts()[self.__menu_selected - len(self.__shortcuts)].callback()
+
+    def __render_menu(
+            self: 'Lazython',
+    ) -> None:
+        """Render the menu."""
+        # Get the menu size.
+        menu_width = max([len(shortcut.name) for shortcut in self.__shortcuts] +
+                         [len(shortcut.name) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
+        menu_width += max([len(shortcut.help) for shortcut in self.__shortcuts] +
+                          [len(shortcut.help) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
+        menu_width += len(sep := ' : ')
+        menu_width += 2
+        menu_height = len(self.__shortcuts) + len(self.__tabs[self.__selected_tab].get_shortcuts()) + 2
+        if menu_width > self.__width:
+            menu_width = self.__width
+        if menu_height > self.__height - 1:
+            menu_height = self.__height - 1
+
+        # Get the menu position.
+        menu_x = self.__width // 2 - menu_width // 2
+        menu_y = self.__height // 2 - menu_height // 2
+
+        # Render top border.
+        title = 'Menu'
+        text = '┌╴' + title + '╶' + '─' * (menu_width - 4 - len(title)) + '┐'
+        self.__renderer.addstr(text, x=menu_x, y=menu_y)
+
+        # Render bottom border.
+        text = '└' + '─' * (menu_width - 2) + '┘'
+        self.__renderer.addstr(text, x=menu_x, y=menu_y + menu_height - 1)
+
+        # Render left border.
+        text = '│' * (menu_height - 2)
+        self.__renderer.addstr(text, x=menu_x, y=menu_y + 1, width=1)
+
+        # Render right border.
+        text = '│' * (menu_height - 2)
+        self.__renderer.addstr(text, x=menu_x + menu_width - 1, y=menu_y + 1, width=1)
+
+        # Render shortcuts.
+        shortcut_width = max([len(shortcut.name) for shortcut in self.__shortcuts] +
+                             [len(shortcut.name) for shortcut in self.__tabs[self.__selected_tab].get_shortcuts()])
+        for i, shortcut in enumerate(self.__shortcuts + self.__tabs[self.__selected_tab].get_shortcuts()):
+            text = shortcut.name + ' ' * (shortcut_width - len(shortcut.name)) + sep + shortcut.help
+            color = '\x1b[7m' if i == self.__menu_selected else ''
+            end_color = '\x1b[0m' if i == self.__menu_selected else ''
+            self.__renderer.addstr(color + text + end_color, x=menu_x + 1,
+                                   y=menu_y + 1 + i, width=menu_width - 2, height=1)
 
     def click_callback(
             self: 'Lazython',
@@ -248,17 +381,19 @@ class Lazython:
     def add_key(
             self: 'Lazython',
             key: int,
-            callback: callable,
+            name: str,
+            help: str,
+            callback: 'function',
     ) -> None:
-        """Add a key callback.
+        """Add a key shortcut.
 
         Args:
-            key (int): The key code.
-            callback (callable): The callback.
+            key (int): The key.
+            name (str): The name.
+            help (str): The help.
+            callback (function): The callback.
         """
-        callbacks: list[callable] = self.__key_map.get(key, [])
-        callbacks.append(callback)
-        self.__key_map[key] = callbacks
+        self.__shortcuts.append(Shortcut(key=key, name=name, help=help, callback=callback))
 
     def update(
             self: 'Lazython',
@@ -294,6 +429,9 @@ class Lazython:
 
         tab = self.__tabs[self.__selected_tab]
         tab.render_content()
+
+        if self.__display_menu:
+            self.__render_menu()
 
         self.__render_footer()
 
@@ -483,5 +621,5 @@ class Lazython:
     def __render_footer(
             self: 'Lazython',
     ) -> None:
-        text = 'Tab/Shift+Tab: Switch tab | ↑ ↓: Switch line | ← →: Switch subtab | q: Quit'
+        text = 'Tab/Shift+Tab: Switch tab | ↑ ↓: Switch line | ← →: Switch subtab | x: Menu | q: Quit'
         self.__renderer.addstr(text[:self.__width], x=0, y=self.__height - 1)

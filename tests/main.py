@@ -3,6 +3,8 @@ from lazython import Lazython
 
 if __name__ == '__main__':
 
+    import sys
+
     lazyier = Lazython()
 
     tab1 = lazyier.new_tab(name='Tab 1', subtabs=['Subtab 1', 'Subtab 2', 'Subtab 3'])
@@ -33,5 +35,14 @@ if __name__ == '__main__':
     line3_3 = tab3.add_line(text='Line 3')
     line3_4 = tab3.add_line(text='Line 4')
     line3_5 = tab3.add_line(text='Line 5')
+
+    lazyier.add_key(key=ord('a'), name='a', help='Help 1',
+                    callback=lambda: print('Shortcut 1', file=sys.stderr))
+    lazyier.add_key(key=ord('b'), name='b', help='Help 2',
+                    callback=lambda: print('Shortcut 2', file=sys.stderr))
+    tab1.add_key(key=ord('b'), name='b', help='Help 3',
+                 callback=lambda: print('Shortcut 3', file=sys.stderr))
+    tab1.add_key(key=ord('c'), name='c', help='Help 4',
+                 callback=lambda: print('Shortcut 4', file=sys.stderr))
 
     lazyier.start()

@@ -2,6 +2,7 @@ from .line import Line
 from .box import Box
 from .renderer import Renderer
 from .vars import *
+from .shortcut import Shortcut
 
 
 class Tab:
@@ -35,12 +36,55 @@ class Tab:
         self.__tab_scroll = 0
         self.__content_scroll = 0
 
+        self.__shortcuts: list[Shortcut] = []
+
         self.__selected = False
 
         self.__renderer = renderer
 
         self.id = Tab.ID
         Tab.ID += 1
+
+    def add_key(
+            self: 'Tab',
+            key: int,
+            name: str,
+            help: str,
+            callback: 'function',
+    ) -> None:
+        """Add a key shortcut.
+
+        Args:
+            key (int): The key.
+            name (str): The name.
+            help (str): The help.
+            callback (function): The callback.
+        """
+        self.__shortcuts.append(Shortcut(key=key, name=name, help=help, callback=callback))
+
+    def get_key_callbacks(
+            self: 'Tab',
+            key: int,
+    ) -> list['function']:
+        """Get the key callbacks.
+
+        Args:
+            key (int): The key.
+
+        Returns:
+            list[function]: The callbacks.
+        """
+        return [shortcut.callback for shortcut in self.__shortcuts if shortcut.key == key]
+
+    def get_shortcuts(
+            self: 'Tab',
+    ) -> list[Shortcut]:
+        """Get the shortcuts.
+
+        Returns:
+            list[Shortcut]: The shortcuts.
+        """
+        return self.__shortcuts
 
     def add_line(
             self: 'Tab',
